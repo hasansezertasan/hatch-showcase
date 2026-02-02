@@ -1,22 +1,38 @@
 # SPDX-FileCopyrightText: 2021-present Ofek Lev <oss@ofek.dev>
 #
 # SPDX-License-Identifier: MIT
-import click
+import typer
 
 from hatch_showcase._version import version
 from hatch_showcase.fib import fibonacci
 
-# NOTE: The group/command decorators must come last to avoid the following issue at runtime:
-# https://github.com/pallets/click/issues/1199
+app = typer.Typer()
 
 
-@click.version_option(version=version, prog_name='hatch-showcase')
-@click.group()
-def hatch_showcase():
-    pass
+def version_callback(value: bool) -> None:  # noqa: FBT001
+    if value:
+        typer.echo(f'hatch-showcase {version}')
+        raise typer.Exit()
 
 
-@click.argument('n', type=int)
-@hatch_showcase.command()
-def fib(n: int):
-    click.echo(fibonacci(n))
+@app.callback(invoke_without_command=True)
+def main(
+    version: bool = typer.Option(  # noqa: FBT001
+        False,
+        '--version',
+        '-V',
+        callback=version_callback,
+        is_eager=True,
+        help='Show version and exit.',
+    ),
+) -> None:
+    """A project showcasing features and plugins for Hatch."""
+
+
+@app.command()
+def fib(n: int) -> None:
+    """Calculate the nth Fibonacci number."""
+    typer.echo(fibonacci(n))
+
+
+hatch_showcase = app

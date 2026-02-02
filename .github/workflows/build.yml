@@ -19,7 +19,7 @@ defaults:
     shell: bash
 
 env:
-  STABLE_PYTHON_VERSION: "3.11"
+  STABLE_PYTHON_VERSION: "3.14"
   CIBW_BUILD_FRONTEND: build
   CIBW_ENVIRONMENT_PASS_LINUX: >
     HATCH_BUILD_HOOKS_ENABLE
@@ -41,20 +41,20 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         # Fetch all tags
         fetch-depth: 0
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.11.4
+      uses: pypa/cibuildwheel@298ed2fb2c105540f5ed055e8a6ad78d82dd3a7e # v3.3.1
       env:
         CIBW_ARCHS_MACOS: x86_64
         HATCH_BUILD_HOOKS_ENABLE: 'true'
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
-        name: artifacts
+        name: artifacts-wheels-${{ matrix.os }}
         path: wheelhouse/*.whl
         if-no-files-found: error
 
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         # Fetch all tags
         fetch-depth: 0
@@ -74,9 +74,9 @@ jobs:
     - name: Build
       run: python -m build
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
-        name: artifacts
+        name: artifacts-sdist
         path: dist/*
         if-no-files-found: error
 
@@ -90,25 +90,25 @@ jobs:
       (github.ref == 'refs/heads/master' || startsWith(github.event.ref, 'refs/tags'))
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         # Fetch all tags
         fetch-depth: 0
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
       with:
         platforms: arm64
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.11.4
+      uses: pypa/cibuildwheel@298ed2fb2c105540f5ed055e8a6ad78d82dd3a7e # v3.3.1
       env:
         CIBW_ARCHS_LINUX: aarch64
         HATCH_BUILD_HOOKS_ENABLE: 'true'
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
-        name: artifacts
+        name: artifacts-wheels-arm
         path: wheelhouse/*.whl
         if-no-files-found: error
 
@@ -139,25 +139,25 @@ jobs:
           os: windows-2022
         # macOS
         - target: aarch64-apple-darwin
-          os: macos-12
+          os: macos-14
         - target: x86_64-apple-darwin
-          os: macos-12
+          os: macos-14
 
     env:
       CARGO: cargo
       CARGO_BUILD_TARGET: ${{ matrix.job.target }}
       PYAPP_REPO: pyapp
-      PYAPP_VERSION: v0.5.0
+      PYAPP_VERSION: v0.29.0
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
     - name: Clone PyApp
       run: git clone --depth 1 --branch $PYAPP_VERSION https://github.com/ofek/pyapp $PYAPP_REPO
 
     - name: Set up Python ${{ env.STABLE_PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: ${{ env.STABLE_PYTHON_VERSION }}
 
@@ -171,7 +171,7 @@ jobs:
 
     - name: Set up cross compiling
       if: matrix.job.cross
-      uses: taiki-e/install-action@v2
+      uses: taiki-e/install-action@650c5ca14212efbbf3e580844b04bdccf68dac31 # v2.67.18
       with:
         tool: cross
 
@@ -191,9 +191,9 @@ jobs:
     - name: Build
       run: hatch -v build --target app
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
-        name: binaries
+        name: binaries-${{ matrix.job.target }}
         path: dist/app/*
         if-no-files-found: error
 
@@ -206,26 +206,27 @@ jobs:
     - build-binaries
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+    permissions:
+      id-token: write
+      contents: write
 
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
-        name: artifacts
+        pattern: artifacts-*
         path: dist
+        merge-multiple: true
 
     - name: Push build artifacts to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.6.4
-      with:
-        skip_existing: true
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      uses: pypa/gh-action-pypi-publish@release/v1
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
-        name: binaries
+        pattern: binaries-*
         path: bin
+        merge-multiple: true
 
     - name: Add binary assets to current release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
       with:
         files: bin/*

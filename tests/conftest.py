@@ -2,23 +2,19 @@
 #
 # SPDX-License-Identifier: MIT
 import pytest
-from click.testing import CliRunner as __CliRunner
+from typer.testing import CliRunner
 
-
-class CliRunner(__CliRunner):
-    def __init__(self, command):
-        super().__init__()
-        self._command = command
-
-    def __call__(self, *args, **kwargs):
-        # Exceptions should always be handled
-        kwargs.setdefault('catch_exceptions', False)
-
-        return self.invoke(self._command, args, **kwargs)
+from hatch_showcase.cli import app
 
 
 @pytest.fixture(scope='session')
-def hatch_showcase():
-    from hatch_showcase import cli
+def runner():
+    return CliRunner()
 
-    return CliRunner(cli.hatch_showcase)
+
+@pytest.fixture(scope='session')
+def hatch_showcase(runner):
+    def invoke(*args, **kwargs):
+        return runner.invoke(app, args, **kwargs)
+
+    return invoke
